@@ -1,0 +1,371 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Clip Keeper</title>
+<meta name="description" content="Save Facebook and Instagram video links and download them as a spreadsheet.">
+<meta name="theme-color" content="#3546D8">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon-192.png" type="image/png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&family=Figtree:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap">
+<style>
+:root {
+  --bg: #F3F4F8; --surface: #FFFFFF; --ink: #161A2E; --muted: #5E6480; --line: #DCDFEA;
+  --accent: #3546D8; --accent-ink: #FFFFFF;
+  --fb: #1F5FD6; --fb-soft: #E3ECFC; --ig: #B8327A; --ig-soft: #F8E3EF; --other: #5E6480; --other-soft: #E8EAF1;
+  --ok: #1D7F55; --ok-soft: #DDF3E8; --danger: #C23A2B;
+  --f-display: "Bricolage Grotesque", "Segoe UI", Roboto, system-ui, sans-serif;
+  --f-body: "Figtree", "Segoe UI", Roboto, system-ui, sans-serif;
+  --f-mono: "JetBrains Mono", ui-monospace, "Roboto Mono", Menlo, monospace;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #10121C; --surface: #191C2B; --ink: #ECEEF7; --muted: #9BA1BE; --line: #2C3047;
+    --accent: #7D8BFF; --accent-ink: #0E1020;
+    --fb: #7FA8FF; --fb-soft: #1C2A4A; --ig: #F08CC0; --ig-soft: #3A1D30; --other: #A3A8C2; --other-soft: #262A3D;
+    --ok: #5FD19D; --ok-soft: #173326; --danger: #FF8A7A;
+    color-scheme: dark;
+  }
+}
+* { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+body {
+  margin: 0; background: var(--bg); color: var(--ink); font-family: var(--f-body); font-size: 16px; line-height: 1.5;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: calc(20px + env(safe-area-inset-top, 0px)) calc(40px + env(safe-area-inset-bottom, 0px));
+}
+[hidden] { display: none !important; }
+.wrap { max-width: 560px; margin: 0 auto; display: grid; gap: 22px; }
+header { display: grid; gap: 4px; }
+h1 { font-family: var(--f-display); font-weight: 800; font-size: 2rem; line-height: 1.05; margin: 0; letter-spacing: -0.02em; }
+.sub { color: var(--muted); margin: 0; font-size: .95rem; }
+
+.shared { background: var(--ok-soft); border: 1.5px solid var(--ok); border-radius: 18px; padding: 16px; display: grid; gap: 10px; }
+.shared h2 { color: var(--ok); }
+.shared .hint { font-size: .88rem; color: var(--muted); margin: 0; }
+.row { display: flex; gap: 8px; }
+.row input { flex: 1; }
+
+.capture { background: var(--surface); border: 1px solid var(--line); border-radius: 18px; padding: 18px; display: grid; gap: 12px; }
+label { font-size: .75rem; font-weight: 600; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); }
+.field { display: grid; gap: 6px; }
+input[type="url"], input[type="text"] {
+  width: 100%; min-width: 0; font: inherit; color: var(--ink); background: var(--bg);
+  border: 1.5px solid var(--line); border-radius: 12px; padding: 13px 14px;
+}
+input:focus-visible { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 25%, transparent); }
+#url { font-family: var(--f-mono); font-size: .9rem; }
+.detect { font-size: .85rem; color: var(--muted); min-height: 1.3em; }
+.btn { font: inherit; font-weight: 600; border: 0; border-radius: 12px; padding: 13px 16px; cursor: pointer; }
+.btn:focus-visible { outline: 3px solid color-mix(in srgb, var(--accent) 45%, transparent); outline-offset: 2px; }
+.primary { background: var(--accent); color: var(--accent-ink); }
+.primary:disabled { opacity: .45; cursor: not-allowed; }
+.ghost { background: transparent; color: var(--ink); border: 1.5px solid var(--line); }
+.status { font-size: .9rem; min-height: 1.4em; margin: 0; }
+.status.ok { color: var(--ok); } .status.err { color: var(--danger); }
+
+.how { font-size: .88rem; color: var(--muted); }
+.how summary { cursor: pointer; font-weight: 600; color: var(--ink); }
+.how ol { margin: 6px 0 0; padding-left: 1.2em; }
+
+h2 { font-family: var(--f-display); font-weight: 600; font-size: 1.3rem; margin: 0; }
+.loghead { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+.count { font-family: var(--f-mono); font-size: .85rem; color: var(--muted); font-variant-numeric: tabular-nums; }
+.chips { display: flex; gap: 8px; flex-wrap: wrap; }
+.chip { font: inherit; font-size: .85rem; font-weight: 600; padding: 6px 12px; border-radius: 999px; border: 1.5px solid var(--line); background: transparent; color: var(--muted); cursor: pointer; }
+.chip[aria-pressed="true"] { background: var(--ink); color: var(--bg); border-color: var(--ink); }
+
+ul.log { list-style: none; margin: 0; padding: 0; display: grid; gap: 1px; background: var(--line); border-radius: 14px; overflow: hidden; border: 1px solid var(--line); }
+.log li { background: var(--surface); padding: 14px; display: grid; grid-template-columns: auto 1fr auto; gap: 4px 12px; align-items: start; }
+.tag { font-size: .72rem; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; padding: 3px 8px; border-radius: 6px; grid-row: span 2; margin-top: 2px; }
+.tag.Facebook { color: var(--fb); background: var(--fb-soft); }
+.tag.Instagram { color: var(--ig); background: var(--ig-soft); }
+.tag.Other { color: var(--other); background: var(--other-soft); }
+.meta { min-width: 0; display: grid; gap: 2px; }
+.note { font-weight: 500; overflow-wrap: anywhere; }
+.link { font-family: var(--f-mono); font-size: .8rem; color: var(--accent); text-decoration: none; overflow-wrap: anywhere; }
+.when { font-family: var(--f-mono); font-size: .75rem; color: var(--muted); grid-column: 2; font-variant-numeric: tabular-nums; }
+.del { grid-row: span 2; font: inherit; font-size: .8rem; background: transparent; border: 1.5px solid var(--line); color: var(--muted); border-radius: 8px; padding: 5px 9px; cursor: pointer; white-space: nowrap; }
+.del.armed { color: var(--danger); border-color: var(--danger); }
+.empty { background: var(--surface); border: 1.5px dashed var(--line); border-radius: 14px; padding: 22px; text-align: center; color: var(--muted); }
+.empty strong { display: block; color: var(--ink); font-family: var(--f-display); font-size: 1.1rem; margin-bottom: 4px; }
+
+.export { display: flex; gap: 10px; flex-wrap: wrap; }
+.export .btn { flex: 1 1 160px; }
+.fineprint { font-size: .82rem; color: var(--muted); margin: 0; }
+@media (prefers-reduced-motion: no-preference) {
+  .log li.fresh { animation: pop .6s ease-out; }
+  @keyframes pop { from { background: color-mix(in srgb, var(--accent) 18%, var(--surface)); } }
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>Clip Keeper</h1>
+    <p class="sub">Save Facebook and Instagram videos you like, then download them all as a spreadsheet.</p>
+  </header>
+
+  <section class="shared" id="shared" hidden aria-live="polite">
+    <h2 id="sharedTitle">Saved!</h2>
+    <div class="row">
+      <input id="sharedNote" type="text" maxlength="200" placeholder="Add a note (optional)" aria-label="Note for this clip">
+      <button class="btn primary" id="sharedNoteBtn" type="button">Add</button>
+    </div>
+    <p class="hint">Press your phone's Back button to return to the video.</p>
+  </section>
+
+  <form class="capture" id="form" novalidate>
+    <div class="field">
+      <label for="url">Video link</label>
+      <input id="url" type="url" inputmode="url" autocomplete="off" placeholder="Paste a video link">
+      <div class="detect" id="detect"></div>
+    </div>
+    <div class="field">
+      <label for="note">Note (optional)</label>
+      <input id="note" type="text" maxlength="200" placeholder="e.g. funny dog, recipe to try">
+    </div>
+    <button class="btn primary" id="save" type="submit" disabled>Save clip</button>
+    <p class="status" id="status" role="status"></p>
+    <details class="how">
+      <summary>Fastest way to save</summary>
+      <ol>
+        <li>On a Facebook or Instagram video, tap <b>Share</b>.</li>
+        <li>Pick <b>Clip Keeper</b> from the share menu (tap <b>More</b> if you don't see it).</li>
+        <li>Done. The clip is saved. Add a note if you like, then press Back.</li>
+      </ol>
+    </details>
+  </form>
+
+  <section style="display:grid;gap:12px">
+    <div class="loghead">
+      <h2>Saved clips</h2>
+      <span class="count" id="count">0 clips</span>
+    </div>
+    <div class="chips" id="chips">
+      <button class="chip" type="button" data-f="All" aria-pressed="true">All</button>
+      <button class="chip" type="button" data-f="Facebook" aria-pressed="false">Facebook</button>
+      <button class="chip" type="button" data-f="Instagram" aria-pressed="false">Instagram</button>
+      <button class="chip" type="button" data-f="Other" aria-pressed="false">Other</button>
+    </div>
+    <div id="list"></div>
+    <div class="export">
+      <button class="btn primary" id="xlsx" type="button">Download spreadsheet (.xlsx)</button>
+      <button class="btn ghost" id="csv" type="button">Download .csv</button>
+    </div>
+    <p class="status" id="exportStatus" role="status"></p>
+    <p class="fineprint">Your clips are stored only on this phone, inside this app. Download the spreadsheet now and then as a backup.</p>
+  </section>
+</div>
+
+<script src="xlsx.full.min.js"></script>
+<script>
+(function () {
+  "use strict";
+  var KEY = "clipkeeper.clips.v1";
+  var $ = function (id) { return document.getElementById(id); };
+  var urlEl = $("url"), noteEl = $("note"), saveBtn = $("save"), statusEl = $("status");
+  var clips = load(), filter = "All", freshId = null, armed = null, lastSharedId = null;
+
+  function load() {
+    try { var v = JSON.parse(localStorage.getItem(KEY) || "[]"); return Array.isArray(v) ? v : []; }
+    catch (e) { return []; }
+  }
+  function persist() {
+    try { localStorage.setItem(KEY, JSON.stringify(clips)); return true; }
+    catch (e) { setStatus(statusEl, "Couldn't save on this phone. Your storage may be full.", "err"); return false; }
+  }
+  function newId() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 7); }
+
+  function platformOf(u) {
+    try {
+      var h = new URL(u).hostname.toLowerCase().replace(/^(www|m|web|mbasic|l)\./, "");
+      if (/(^|\.)facebook\.com$|^fb\.watch$|^fb\.com$|^fb\.me$/.test(h)) return "Facebook";
+      if (/(^|\.)instagram\.com$|^instagr\.am$/.test(h)) return "Instagram";
+      return "Other";
+    } catch (e) { return null; }
+  }
+  // Share menus put the link in different places (url, text, or title) and sometimes add words around it.
+  function findUrl() {
+    for (var i = 0; i < arguments.length; i++) {
+      var m = String(arguments[i] || "").match(/https?:\/\/[^\s<>"']+/i);
+      if (m) return m[0].replace(/[).,!?]+$/, "");
+    }
+    return "";
+  }
+  function fmt(iso) {
+    var d = new Date(iso);
+    if (isNaN(d)) return "";
+    return d.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" }) + " · " +
+      d.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });
+  }
+  function setStatus(el, msg, kind) { el.textContent = msg; el.className = "status" + (kind ? " " + kind : ""); }
+
+  function addClip(url, note) {
+    var existing = clips.find(function (c) { return c.url === url; });
+    if (existing) return { clip: existing, dup: true };
+    var clip = { id: newId(), url: url, platform: platformOf(url) || "Other", note: note || "", savedAt: new Date().toISOString() };
+    clips.unshift(clip);
+    if (!persist()) { clips.shift(); return null; }
+    freshId = clip.id;
+    return { clip: clip, dup: false };
+  }
+
+  function refreshDetect() {
+    var u = findUrl(urlEl.value);
+    var p = u ? platformOf(u) : null;
+    $("detect").textContent = !urlEl.value.trim() ? "" : p ? (p === "Other" ? "Link detected" : p + " link detected") : "That doesn't look like a link yet.";
+    saveBtn.disabled = !p;
+  }
+  urlEl.addEventListener("input", refreshDetect);
+
+  function render() {
+    var shown = clips.filter(function (c) { return filter === "All" || c.platform === filter; });
+    $("count").textContent = clips.length + (clips.length === 1 ? " clip" : " clips");
+    var list = $("list");
+    list.innerHTML = "";
+    if (!shown.length) {
+      var e = document.createElement("div"); e.className = "empty";
+      var s = document.createElement("strong");
+      s.textContent = clips.length ? "No " + filter + " clips yet" : "No clips saved yet";
+      e.appendChild(s);
+      e.appendChild(document.createTextNode(clips.length ? "Try another filter." : "Share a video to Clip Keeper, or paste a link above."));
+      list.appendChild(e);
+      return;
+    }
+    var ul = document.createElement("ul"); ul.className = "log";
+    shown.forEach(function (c) {
+      var li = document.createElement("li"); if (c.id === freshId) li.className = "fresh";
+      var tag = document.createElement("span"); tag.className = "tag " + c.platform; tag.textContent = c.platform;
+      var meta = document.createElement("div"); meta.className = "meta";
+      if (c.note) { var n = document.createElement("span"); n.className = "note"; n.textContent = c.note; meta.appendChild(n); }
+      var a = document.createElement("a"); a.className = "link"; a.href = c.url; a.target = "_blank"; a.rel = "noopener";
+      a.textContent = c.url.replace(/^https?:\/\/(www\.)?/, "");
+      meta.appendChild(a);
+      var del = document.createElement("button"); del.type = "button"; del.className = "del" + (armed === c.id ? " armed" : "");
+      del.textContent = armed === c.id ? "Tap to remove" : "Remove";
+      del.addEventListener("click", function () { onDelete(c.id); });
+      var when = document.createElement("span"); when.className = "when"; when.textContent = fmt(c.savedAt);
+      li.appendChild(tag); li.appendChild(meta); li.appendChild(del); li.appendChild(when);
+      ul.appendChild(li);
+    });
+    list.appendChild(ul);
+  }
+
+  function onDelete(id) {
+    if (armed !== id) {
+      armed = id; render();
+      setTimeout(function () { if (armed === id) { armed = null; render(); } }, 4000);
+      return;
+    }
+    armed = null;
+    clips = clips.filter(function (c) { return c.id !== id; });
+    persist(); render();
+  }
+
+  $("chips").addEventListener("click", function (e) {
+    var b = e.target.closest(".chip"); if (!b) return;
+    filter = b.dataset.f;
+    document.querySelectorAll(".chip").forEach(function (x) { x.setAttribute("aria-pressed", String(x === b)); });
+    render();
+  });
+
+  $("form").addEventListener("submit", function (e) {
+    e.preventDefault();
+    var url = findUrl(urlEl.value);
+    if (!platformOf(url)) return;
+    var r = addClip(url, noteEl.value.trim());
+    if (!r) return;
+    if (r.dup) { setStatus(statusEl, "You already saved this one.", "err"); return; }
+    urlEl.value = ""; noteEl.value = ""; refreshDetect();
+    setStatus(statusEl, "Saved.", "ok");
+    render();
+  });
+
+  // Opened from the share menu: save right away.
+  function handleShare() {
+    var p = new URLSearchParams(location.search);
+    if (!p.has("url") && !p.has("text") && !p.has("title")) return;
+    var url = findUrl(p.get("url"), p.get("text"), p.get("title"));
+    try { history.replaceState(null, "", location.pathname); } catch (e) {}
+    var box = $("shared");
+    box.hidden = false;
+    if (!url) {
+      $("sharedTitle").textContent = "No link found in what you shared";
+      box.querySelector(".row").hidden = true;
+      return;
+    }
+    var r = addClip(url, "");
+    if (!r) { box.hidden = true; return; }
+    lastSharedId = r.clip.id;
+    var where = r.clip.platform === "Other" ? "" : " from " + r.clip.platform;
+    $("sharedTitle").textContent = r.dup ? "Already saved" + where : "Saved" + where + "!";
+    $("sharedNote").value = r.clip.note || "";
+  }
+  $("sharedNoteBtn").addEventListener("click", function () {
+    var c = clips.find(function (x) { return x.id === lastSharedId; });
+    if (!c) return;
+    c.note = $("sharedNote").value.trim();
+    if (persist()) { $("sharedNoteBtn").textContent = "Added"; render(); }
+  });
+  $("sharedNote").addEventListener("input", function () { $("sharedNoteBtn").textContent = "Add"; });
+
+  // Spreadsheet export
+  var HEAD = ["Date saved", "Time", "Platform", "Note", "Link"];
+  function rows() {
+    return clips.slice().reverse().map(function (c) {
+      var d = new Date(c.savedAt), ok = !isNaN(d);
+      return {
+        "Date saved": ok ? d.toLocaleDateString() : "",
+        "Time": ok ? d.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" }) : "",
+        "Platform": c.platform, "Note": c.note || "", "Link": c.url
+      };
+    });
+  }
+  function stamp() { return new Date().toISOString().slice(0, 10); }
+  function download(blob, name) {
+    var out = $("exportStatus");
+    if (!clips.length) { setStatus(out, "Save a clip first, then download.", "err"); return; }
+    var a = document.createElement("a");
+    a.href = URL.createObjectURL(blob); a.download = name;
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(function () { URL.revokeObjectURL(a.href); }, 4000);
+    setStatus(out, name + " saved to your Downloads.", "ok");
+  }
+  $("xlsx").addEventListener("click", function () {
+    if (!window.XLSX) { setStatus($("exportStatus"), "The spreadsheet maker didn't load. Use .csv instead.", "err"); return; }
+    var ws = XLSX.utils.json_to_sheet(rows(), { header: HEAD });
+    ws["!cols"] = [{ wch: 12 }, { wch: 9 }, { wch: 11 }, { wch: 30 }, { wch: 60 }];
+    rows().forEach(function (r, i) {
+      var cell = ws[XLSX.utils.encode_cell({ r: i + 1, c: 4 })];
+      if (cell) cell.l = { Target: r.Link };
+    });
+    var wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, "Saved clips");
+    var buf = XLSX.write(wb, { bookType: "xlsx", type: "array" });
+    download(new Blob([buf], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" }), "saved-clips-" + stamp() + ".xlsx");
+  });
+  $("csv").addEventListener("click", function () {
+    var esc = function (v) { return '"' + String(v).replace(/"/g, '""') + '"'; };
+    var text = "﻿" + [HEAD.map(esc).join(",")].concat(rows().map(function (o) {
+      return HEAD.map(function (h) { return esc(o[h]); }).join(",");
+    })).join("\r\n");
+    download(new Blob([text], { type: "text/csv;charset=utf-8" }), "saved-clips-" + stamp() + ".csv");
+  });
+
+  // Ask the phone not to clear this app's storage on its own.
+  if (navigator.storage && navigator.storage.persist) { navigator.storage.persist().catch(function () {}); }
+  if ("serviceWorker" in navigator) {
+    window.addEventListener("load", function () { navigator.serviceWorker.register("sw.js").catch(function () {}); });
+  }
+
+  handleShare();
+  render();
+})();
+</script>
+</body>
+</html>
